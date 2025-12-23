@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # GitLab Webhook Server
+  webhook-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gitlab-webhook-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      # 服务器配置
+      - PORT=3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # GitLab Webhook 配置
+      - GITLAB_WEBHOOK_SECRET=${GITLAB_WEBHOOK_SECRET}
+      
+      # 数据库配置
+      - DB_TYPE=${DB_TYPE:-mysql}
+      - DB_HOST=${DB_HOST:-mysql}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_NAME=${DB_NAME:-gitlab_webhook}
+      - DB_CHARSET=${DB_CHARSET:-utf8mb4}
+      - DB_TIMEZONE=${DB_TIMEZONE:-Asia/Shanghai}
+      
+      # 工作池配置
+      - WORKER_POOL_WORKERS=${WORKER_POOL_WORKERS:-10}
+      - WORKER_POOL_QUEUE_SIZE=${WORKER_POOL_QUEUE_SIZE:-1000}
+      
+      # 限流配置
+      - RATE_LIMIT=${RATE_LIMIT:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-1m}
+      
+      # GitLab API 配置
+      - GITLAB_BASE_URL=${GITLAB_BASE_URL:-https://gitlab.com}
+      - GITLAB_TOKEN=${GITLAB_TOKEN}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - webhook-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: gitlab-webhook-mysql
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-password}
+      - MYSQL_DATABASE=${DB_NAME:-gitlab_webhook}
+      - MYSQL_USER=${DB_USER:-root}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-password}
+      - TZ=Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - webhook-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # PostgreSQL 数据库（可选，注释掉 MySQL 后启用）
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: gitlab-webhook-postgres
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${POSTGRES_PORT:-5432}:5432"
+  #   environment:
+  #     - POSTGRES_USER=${DB_USER:-postgres}
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+  #     - POSTGRES_DB=${DB_NAME:-gitlab_webhook}
+  #     - TZ=Asia/Shanghai
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./migrations:/docker-entrypoint-initdb.d
+  #   networks:
+  #     - webhook-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
+
+volumes:
+  mysql_data:
+    driver: local
+  # postgres_data:
+  #   driver: local
+
+networks:
+  webhook-network:
+    driver: bridge
+

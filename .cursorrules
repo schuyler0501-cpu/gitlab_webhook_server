@@ -1,0 +1,384 @@
+# GitLab Webhook Server - Cursor Rules
+
+## ⚠️ 重要提示
+
+**在开始任何对话前，必须执行以下步骤**：
+
+1. **读取 `.cursor/memory.md` 文件** - 了解用户的重要指令、偏好设置和项目特定要求
+2. **读取 `.cursor/conversations.md` 文件** - 回顾历史有效对话，建立长久持续的记忆
+3. **应用记忆内容** - 记忆内容优先于本规则文件中的通用规则
+
+### 有效对话处理机制
+
+当用户在对话中使用 `[有效对话]` 标识时，AI 必须：
+
+1. **识别标识**: 检测对话中是否包含 `[有效对话]`
+2. **获取时间**: 获取当前北京时间（Asia/Shanghai 时区，UTC+8）
+3. **保存对话**: 将用户消息和 AI 回复保存到 `.cursor/conversations.md` 文件
+4. **格式规范**: 使用以下格式保存：
+   ```markdown
+   ## 对话记录 - YYYY-MM-DD HH:MM:SS (北京时间)
+   
+   ### 用户
+   [用户消息内容，去除 [有效对话] 标识]
+   
+   ### AI 回复
+   [AI 的完整回复]
+   
+   ---
+   ```
+5. **确认保存**: 在回复中告知用户对话已保存
+
+**重要**: 每次对话开始时，AI 必须回顾 `.cursor/conversations.md` 中的历史对话，确保记忆的连续性。
+
+## 项目概述
+
+这是一个基于 Go 语言的 GitLab Webhook 服务器，用于接收和处理 GitLab 的 webhook 事件，记录代码提交信息，用于团队效能度量。
+
+**核心功能**:
+- 接收 GitLab Webhook 事件（Push、Tag Push 等）
+- 解析和记录代码提交信息
+- 统计团队成员代码产出
+- 支持效能度量场景
+
+## 技术栈
+
+- **语言**: Go 1.21+
+- **Web 框架**: Gin
+- **日志**: Uber Zap
+- **配置管理**: godotenv
+- **代码质量**: golangci-lint
+
+## 项目结构规范
+
+```
+cmd/server/          # 应用入口，只包含 main.go
+internal/            # 内部包，不对外暴露
+  ├── config/        # 配置管理
+  ├── handler/       # HTTP 请求处理器
+  ├── model/         # 数据模型定义
+  ├── router/        # 路由和中间件
+  ├── service/       # 业务逻辑层
+  └── logger/        # 日志工具
+pkg/                 # 可对外暴露的包（如果有）
+docs/                # 文档
+```
+
+**重要原则**:
+- `internal/` 包中的代码不能被外部导入
+- `cmd/` 目录只包含应用入口
+- 业务逻辑放在 `service/` 层
+- HTTP 处理放在 `handler/` 层
+
+## 代码风格规范
+
+### 命名约定
+
+- **包名**: 小写字母，简短有意义，如 `handler`, `service`, `model`
+- **文件名**: 小写字母和下划线，如 `webhook_handler.go`
+- **类型/结构体**: PascalCase，如 `WebhookHandler`, `CommitRecord`
+- **函数/变量**: camelCase，如 `handleWebhook`, `commitService`
+- **常量**: PascalCase 或 UPPER_SNAKE_CASE
+- **接口**: 以 `er` 结尾或描述性名称，如 `Reader`, `WebhookProcessor`
+
+### 代码组织
+
+1. **文件结构顺序**:
+   ```go
+   package xxx
+   
+   import (
+       // 标准库
+       "fmt"
+       "time"
+       
+       // 第三方库
+       "github.com/gin-gonic/gin"
+       
+       // 项目内部包
+       "gitlab-webhook-server/internal/model"
+   )
+   
+   // 类型定义
+   type Handler struct {}
+   
+   // 构造函数
+   func NewHandler() *Handler {}
+   
+   // 方法（公开方法在前，私有方法在后）
+   func (h *Handler) PublicMethod() {}
+   func (h *Handler) privateMethod() {}
+   ```
+
+2. **函数长度**: 单个函数不超过 50 行，复杂逻辑拆分为多个函数
+
+3. **注释规范**:
+   - 所有公开的类型、函数、方法必须有注释
+   - 注释以类型/函数名开头，使用中文
+   - 复杂逻辑需要行内注释说明
+
+   ```go
+   // HandleWebhook 处理 GitLab Webhook 请求
+   // 验证 token，解析请求体，并调用服务层处理业务逻辑
+   func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
+       // 实现代码
+   }
+   ```
+
+## 架构模式
+
+### 分层架构
+
+```
+Handler (HTTP 层)
+    ↓
+Service (业务逻辑层)
+    ↓
+Repository/Model (数据层)
+```
+
+**职责划分**:
+- **Handler**: 只负责 HTTP 请求解析、参数验证、响应格式化
+- **Service**: 包含所有业务逻辑，不依赖 HTTP 框架
+- **Model**: 数据模型定义，不包含业务逻辑
+
+### 依赖注入
+
+使用构造函数注入依赖，便于测试：
+
+```go
+type WebhookHandler struct {
+    logger         *zap.Logger
+    webhookService *service.WebhookService
+}
+
+func NewWebhookHandler(logger *zap.Logger, webhookService *service.WebhookService) *WebhookHandler {
+    return &WebhookHandler{
+        logger:         logger,
+        webhookService: webhookService,
+    }
+}
+```
+
+## 错误处理规范
+
+1. **始终检查错误**: 不要忽略任何错误
+2. **添加上下文**: 使用 `fmt.Errorf` 或 `errors.Wrap` 添加上下文信息
+3. **记录错误**: 使用 logger 记录错误，包含足够的上下文
+4. **错误传播**: 在服务层返回错误，在 handler 层处理并响应
+
+```go
+// ✅ 好的错误处理
+if err != nil {
+    logger.Error("处理 webhook 失败",
+        zap.Error(err),
+        zap.String("event_type", eventType),
+    )
+    return fmt.Errorf("处理 webhook 失败: %w", err)
+}
+
+// ❌ 不好的错误处理
+if err != nil {
+    return err  // 缺少上下文
+}
+```
+
+## 日志规范
+
+1. **使用结构化日志**: 使用 zap 的结构化日志功能
+2. **日志级别**:
+   - `Debug`: 详细的调试信息
+   - `Info`: 重要的业务流程信息
+   - `Warn`: 警告信息，不影响功能
+   - `Error`: 错误信息，需要关注
+3. **包含上下文**: 日志中应包含足够的上下文信息
+
+```go
+// ✅ 好的日志
+logger.Info("处理 Webhook 事件",
+    zap.String("event_type", eventType),
+    zap.String("project", projectName),
+    zap.Int("commit_count", len(commits)),
+)
+
+// ❌ 不好的日志
+logger.Info("处理 Webhook")  // 缺少上下文
+```
+
+## 测试规范
+
+1. **测试文件命名**: `*_test.go`
+2. **测试函数命名**: `TestXxx` 或 `TestXxx_Yyy`
+3. **表驱动测试**: 对于多个测试用例，使用表驱动测试
+4. **覆盖率**: 核心业务逻辑测试覆盖率应达到 80%+
+
+```go
+func TestWebhookHandler_HandleWebhook(t *testing.T) {
+    tests := []struct {
+        name           string
+        eventType      string
+        expectedStatus int
+    }{
+        {
+            name:           "valid push event",
+            eventType:      "Push Hook",
+            expectedStatus: http.StatusOK,
+        },
+        // 更多测试用例...
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // 测试逻辑
+        })
+    }
+}
+```
+
+## Git 提交规范
+
+使用 Conventional Commits 格式：
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Type 类型**:
+- `feat`: 新功能
+- `fix`: 修复 bug
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 代码重构
+- `test`: 测试相关
+- `chore`: 构建/工具相关
+
+## 记忆系统
+
+### 用户记忆文件
+
+项目包含 `.cursor/memory.md` 文件，记录了用户的重要指令和偏好。**每次对话时，AI 必须首先参考这个文件**。
+
+记忆文件包含：
+- 代码风格偏好
+- 开发习惯
+- 项目特定要求
+- 常用代码模式
+- 禁止事项
+- 待办事项
+
+### 保存记忆的指令
+
+当用户使用以下格式时，需要更新记忆文件：
+- `@memory 保存: [内容]` - 保存新的记忆
+- `@memory 添加: [内容]` - 添加新内容
+- `@memory 更新: [内容]` - 更新现有内容
+- `@memory 删除: [内容]` - 删除内容
+- `@memory 查看: [查询]` - 查看记忆内容
+
+**重要**: 用户记忆文件中的内容优先于本规则文件中的通用规则。
+
+## AI 协作指南
+
+### 与 AI 对话的最佳实践
+
+1. **提供完整上下文**: 在提问时引用相关文件和代码
+2. **明确需求**: 清楚说明要实现的功能和约束
+3. **分步骤实现**: 复杂功能分步骤实现
+4. **代码引用格式**: 使用文件路径和行号引用代码
+
+### 示例提示词
+
+✅ **好的提示**:
+```
+在 internal/service/commit/commit_service.go 的 RecordCommit 方法中，
+添加数据库持久化逻辑。使用 GORM，参考项目现有的配置风格。
+需要：
+1. 在 internal/config/ 中添加数据库配置
+2. 创建 internal/repository/commit_repository.go
+3. 在 commit_service 中集成 repository
+```
+
+❌ **不好的提示**:
+```
+帮我保存数据到数据库
+```
+
+## 代码审查检查清单
+
+在提交代码前，确保：
+
+- [ ] 代码通过 `make lint` 检查
+- [ ] 代码已格式化（`make fmt`）
+- [ ] 所有测试通过（`make test`）
+- [ ] 新增功能有相应的测试
+- [ ] 错误处理完善
+- [ ] 日志记录充分
+- [ ] 注释完整（公开 API）
+- [ ] 遵循项目命名规范
+- [ ] 没有硬编码的配置值
+
+## 性能考虑
+
+1. **避免不必要的内存分配**: 使用对象池或预分配切片
+2. **并发安全**: 如果使用 goroutine，注意并发安全
+3. **数据库连接**: 使用连接池，避免频繁创建连接
+4. **日志性能**: 使用结构化日志，避免字符串拼接
+
+## 安全规范
+
+1. **输入验证**: 验证所有外部输入
+2. **Token 验证**: Webhook token 必须验证
+3. **敏感信息**: 不要在日志中输出敏感信息
+4. **SQL 注入**: 使用参数化查询（如果使用数据库）
+
+## 特殊注意事项
+
+1. **Webhook 处理**: 
+   - 必须验证 X-Gitlab-Token header
+   - 处理 JSON 解析错误
+   - 记录所有 webhook 事件
+
+2. **数据模型**:
+   - CommitRecord 必须包含完整的提交信息
+   - 时间字段使用 RFC3339 格式
+
+3. **配置管理**:
+   - 所有配置通过环境变量
+   - 提供默认值
+   - 敏感配置必须从环境变量读取
+
+## 禁止事项
+
+- ❌ 不要在 `internal/` 包中导入 `cmd/` 中的代码
+- ❌ 不要在 handler 中直接操作数据库
+- ❌ 不要忽略错误
+- ❌ 不要在日志中输出敏感信息
+- ❌ 不要使用 `panic`（除非是程序启动时的致命错误）
+- ❌ 不要使用全局变量（除非是配置或日志）
+
+## 扩展指南
+
+当需要添加新功能时：
+
+1. **新 API 端点**: 
+   - 在 `internal/router/` 定义路由
+   - 在 `internal/handler/` 创建处理器
+   - 在 `internal/service/` 实现业务逻辑
+
+2. **新 Webhook 事件**:
+   - 在 `internal/service/webhook_service.go` 的 `ProcessWebhook` 中添加 case
+   - 创建对应的处理方法
+
+3. **数据库支持**:
+   - 在 `internal/config/` 添加数据库配置
+   - 创建 `internal/repository/` 目录
+   - 在 service 层集成 repository
+
+---
+
+**记住**: 代码是写给人看的，只是恰好能被机器执行。保持代码清晰、简洁、可维护。
+

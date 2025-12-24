@@ -1,8 +1,6 @@
 package commit
 
 import (
-	"fmt"
-
 	"gitlab-webhook-server/internal/model"
 
 	"go.uber.org/zap"

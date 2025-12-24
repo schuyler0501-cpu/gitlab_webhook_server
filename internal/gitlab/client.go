@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/xanzy/go-gitlab"
+	"gitlab-webhook-server/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -84,10 +85,12 @@ func (c *Client) GetProject(projectID string) (*gitlab.Project, *gitlab.Response
 }
 
 // CalculateDiffStats 计算 diff 统计信息
+// 从 diff 字符串中解析添加和删除的行数
 func CalculateDiffStats(diffs []*gitlab.Diff) (added, removed int) {
 	for _, diff := range diffs {
-		added += diff.Additions
-		removed += diff.Deletions
+		fileAdded, fileRemoved := utils.ParseDiffStats(diff.Diff)
+		added += fileAdded
+		removed += fileRemoved
 	}
 	return added, removed
 }

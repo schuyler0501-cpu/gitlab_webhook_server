@@ -50,11 +50,13 @@ func RegisterRoutes(
 		api.GET("/commits", statsHandler.GetMemberCommits)
 	}
 
-	// 导入 API 路由组
-	importAPI := r.Group("/api/import")
-	{
-		importAPI.POST("/project", importHandler.ImportProject)
-		importAPI.GET("/status", importHandler.GetImportStatus)
+	// 导入 API 路由组（仅在 importHandler 不为 nil 时注册）
+	if importHandler != nil {
+		importAPI := r.Group("/api/import")
+		{
+			importAPI.POST("/project", importHandler.ImportProject)
+			importAPI.GET("/status", importHandler.GetImportStatus)
+		}
 	}
 }
 

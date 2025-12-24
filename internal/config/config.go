@@ -71,6 +71,18 @@ func Load() (*Config, error) {
 			TimeZone: getEnv("DB_TIMEZONE", "Asia/Shanghai"),
 			Charset:  getEnv("DB_CHARSET", "utf8mb4"),
 		},
+		WorkerPool: WorkerPoolConfig{
+			Workers:   getEnvInt("WORKER_POOL_WORKERS", 10),
+			QueueSize: getEnvInt("WORKER_POOL_QUEUE_SIZE", 100),
+		},
+		RateLimit: RateLimitConfig{
+			Limit:  getEnvInt("RATE_LIMIT_LIMIT", 100),
+			Window: getEnv("RATE_LIMIT_WINDOW", "1m"),
+		},
+		GitLab: GitLabConfig{
+			BaseURL: getEnv("GITLAB_BASE_URL", ""),
+			Token:   getEnv("GITLAB_TOKEN", ""),
+		},
 	}
 
 	return cfg, nil

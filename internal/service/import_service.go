@@ -8,6 +8,7 @@ import (
 	gitlabClient "gitlab-webhook-server/internal/gitlab"
 	"gitlab-webhook-server/internal/model"
 	"gitlab-webhook-server/internal/service/commit"
+	"gitlab-webhook-server/internal/utils"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -188,10 +189,13 @@ func (s *ImportService) enrichCommitWithDiff(commitRecord *model.CommitRecord, d
 			filePath = diff.OldPath
 		}
 
+		// 从 diff 字符串中解析行数统计
+		addedLines, removedLines := utils.ParseDiffStats(diff.Diff)
+
 		// 记录文件统计信息
 		commitRecord.FileStats[filePath] = &model.FileStat{
-			AddedLines:   diff.Additions,
-			RemovedLines: diff.Deletions,
+			AddedLines:   addedLines,
+			RemovedLines: removedLines,
 		}
 
 		// 分类文件

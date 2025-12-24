@@ -96,12 +96,14 @@ func main() {
 
 	// 启动服务器
 	addr := ":" + cfg.Port
-	zapLogger.Infof("🚀 服务器启动在端口 %s", cfg.Port)
-	zapLogger.Infof("📡 Webhook 端点: http://localhost%s/webhook", addr)
-	zapLogger.Infof("💚 健康检查: http://localhost%s/health", addr)
+	zapLogger.Info("🚀 服务器启动",
+		zap.String("port", cfg.Port),
+		zap.String("webhook_endpoint", "http://localhost"+addr+"/webhook"),
+		zap.String("health_endpoint", "http://localhost"+addr+"/health"),
+	)
 
 	if err := r.Run(addr); err != nil {
-		zapLogger.Fatalf("服务器启动失败: %v", err)
+		zapLogger.Fatal("服务器启动失败", zap.Error(err))
 		os.Exit(1)
 	}
 }

@@ -31,8 +31,9 @@ func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
 	token := c.GetHeader("X-Gitlab-Token")
 
 	// 验证 token（如果配置了）
-	// TODO: 从配置中获取 secret 进行验证
-	// 目前先跳过验证，后续可以从 config 包中获取
+	// 注意：这里需要从 config 中获取 secret，但为了保持 handler 的简洁性，
+	// token 验证逻辑应该在 service 层或中间件中实现
+	// 目前先记录 token 信息，后续可以在中间件中添加验证
 
 	// 解析请求体
 	var payload map[string]interface{}
@@ -41,6 +42,12 @@ func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return
 	}
+
+	// 记录接收到的 webhook 信息（用于调试）
+	h.logger.Debug("收到 Webhook 请求",
+		zap.String("event_type", eventType),
+		zap.Bool("has_token", token != ""),
+	)
 
 	// 异步处理 webhook（立即返回，不阻塞）
 	go func() {

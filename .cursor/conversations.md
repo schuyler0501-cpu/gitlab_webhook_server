@@ -19,8 +19,8 @@
 
 ## 📊 对话统计
 
-- **总对话数**: 8
-- **最后更新**: 2025-12-24 19:46:17
+- **总对话数**: 9
+- **最后更新**: 2025-12-25 21:19:11
 
 ---
 
@@ -598,5 +598,123 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 - ✅ 项目已达到可运行状态
 
 项目现在可以正常编译和运行。所有编译错误已修复，代码实现经过全面检查，确保没有影响运行的问题。
+
+---
+
+## 对话记录 - 2025-12-25 21:19:11
+
+### 用户
+[有效对话] 请检查当前项目的实现，然后扩展下功能的实现，要求扩展支持对接webhook的源。支持gitee、gitlab、github。按理论来说，一个成功，其他应该逻辑都基本是有效的。因此，我现在没有方便的gitlab，可以使用gitee或者github看看能否尝试下
+
+### AI 回复
+已成功扩展项目功能，支持多平台 webhook（GitLab、Gitee、GitHub）：
+
+**架构设计**：
+
+1. **平台抽象接口** - `internal/webhook/platform.go`
+   - 定义了统一的 `Platform` 接口
+   - 支持平台自动检测和手动指定
+   - 提供统一的解析方法
+
+2. **平台解析器实现**：
+   - **GitLab 解析器** - `internal/webhook/gitlab.go`
+     - 重构了原有的 GitLab 解析逻辑
+     - 保持向后兼容
+   - **Gitee 解析器** - `internal/webhook/gitee.go`
+     - 支持 Gitee webhook 格式
+     - 处理 Gitee 特有的字段差异
+   - **GitHub 解析器** - `internal/webhook/github.go`
+     - 支持 GitHub webhook 格式
+     - 处理 GitHub 特有的字段差异
+
+**功能实现**：
+
+1. **自动平台检测**：
+   - 根据请求头自动识别平台（`X-Gitlab-Event`、`X-Gitee-Event`、`X-GitHub-Event`）
+   - 优先级：GitLab → Gitee → GitHub
+   - 默认使用 GitLab（向后兼容）
+
+2. **统一处理流程**：
+   - `webhook_handler.go` 自动检测平台并调用对应的解析器
+   - `webhook_service.go` 使用平台解析器统一处理
+   - 所有平台共享相同的数据库存储和业务逻辑
+
+3. **路由支持**：
+   - 通用端点：`POST /webhook`（自动检测平台）
+   - 平台特定端点（可选）：
+     - `POST /webhook/gitlab`
+     - `POST /webhook/gitee`
+     - `POST /webhook/github`
+
+**平台差异处理**：
+
+1. **字段映射**：
+   - GitLab：使用 `project` 和 `repository` 对象
+   - Gitee：主要使用 `project` 对象，部分字段名称不同
+   - GitHub：使用 `repository` 对象，字段名称不同
+
+2. **时间格式**：
+   - 支持多种时间格式解析（RFC3339、ISO 8601 等）
+   - 自动适配不同平台的时间格式
+
+3. **用户信息**：
+   - GitLab：使用 `user_id`、`user_name`、`user_username`、`user_email`
+   - Gitee：使用 `pusher` 或 `user` 对象
+   - GitHub：使用 `pusher` 或 `sender` 对象
+
+**新增文件**：
+- `internal/webhook/platform.go` - 平台抽象接口
+- `internal/webhook/gitlab.go` - GitLab 平台解析器
+- `internal/webhook/gitee.go` - Gitee 平台解析器
+- `internal/webhook/github.go` - GitHub 平台解析器
+
+**修改文件**：
+- `internal/service/webhook_service.go` - 使用平台解析器，移除重复代码
+- `internal/handler/webhook_handler.go` - 支持平台自动检测
+- `internal/router/router.go` - 添加平台特定路由端点
+
+**使用方式**：
+
+1. **自动检测（推荐）**：
+   ```bash
+   POST /webhook
+   # 系统会根据请求头自动识别平台
+   ```
+
+2. **指定平台**：
+   ```bash
+   POST /webhook/gitlab
+   POST /webhook/gitee
+   POST /webhook/github
+   ```
+
+**测试建议**：
+
+由于您提到没有方便的 GitLab，可以使用 Gitee 或 GitHub 进行测试：
+
+1. **Gitee 测试**：
+   - 在 Gitee 项目中配置 webhook
+   - Webhook URL: `http://your-server/webhook` 或 `http://your-server/webhook/gitee`
+   - 触发事件：Push 事件
+
+2. **GitHub 测试**：
+   - 在 GitHub 仓库中配置 webhook
+   - Webhook URL: `http://your-server/webhook` 或 `http://your-server/webhook/github`
+   - 触发事件：Push 事件
+
+**代码质量**：
+- ✅ 所有代码通过 linter 检查
+- ✅ 遵循项目代码规范
+- ✅ 错误处理完善
+- ✅ 日志记录完整
+- ✅ 向后兼容（GitLab 功能不受影响）
+
+**项目状态**：
+- ✅ 多平台 webhook 支持已实现
+- ✅ 平台自动检测功能正常
+- ✅ 统一的数据模型和处理流程
+- ✅ 代码结构清晰，易于扩展
+
+项目现在支持 GitLab、Gitee、GitHub 三个平台的 webhook，可以开始使用 Gitee 或 GitHub 进行测试。
 
 ---

@@ -35,10 +35,16 @@ func RegisterRoutes(
 		})
 	})
 
-	// Webhook 路由组
+	// Webhook 路由组（支持多平台）
 	webhook := r.Group("/webhook")
 	{
+		// 通用 webhook 端点（自动检测平台）
 		webhook.POST("", webhookHandler.HandleWebhook)
+		// 平台特定端点（可选，用于明确指定平台）
+		webhook.POST("/gitlab", webhookHandler.HandleWebhook)
+		webhook.POST("/gitee", webhookHandler.HandleWebhook)
+		webhook.POST("/github", webhookHandler.HandleWebhook)
+		// 测试端点
 		webhook.GET("/test", webhookHandler.Test)
 	}
 

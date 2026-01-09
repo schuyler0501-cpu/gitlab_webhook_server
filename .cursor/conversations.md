@@ -19,8 +19,8 @@
 
 ## 📊 对话统计
 
-- **总对话数**: 14
-- **最后更新**: 2026-01-09 20:38:43
+- **总对话数**: 15
+- **最后更新**: 2026-01-09 20:43:32
 
 ---
 
@@ -1136,5 +1136,104 @@ Air 应该能够：
    ```
 
 现在 Air 配置已更新为最新格式，应该可以正常工作了。
+
+---
+
+## 对话记录 - 2026-01-09 20:43:32
+
+### 用户
+[有效对话] makefile还是有问题，运行命令make dev ，上边报错
+
+### AI 回复
+已修复 Makefile 中 `dev` 命令的问题。
+
+**问题分析**：
+
+Makefile 中的 `dev` 命令使用了复杂的条件判断，在 Mac/Linux 上可能存在 shell 语法问题。主要问题：
+1. `command -v` 在 Makefile 中的使用方式可能不正确
+2. 条件判断的语法在不同 shell 中可能不兼容
+3. 错误处理逻辑可能有问题
+
+**修复方案**：
+
+使用 `bash -c` 包装整个命令，确保使用标准的 bash 语法：
+
+```makefile
+dev:
+	@echo "💻 启动开发模式..."
+	@bash -c 'if command -v air > /dev/null 2>&1; then \
+		echo "✅ 使用 Air 热重载..."; \
+		air; \
+	else \
+		echo "⚠️  Air 未安装，使用普通模式运行..."; \
+		echo "💡 安装 Air: make install-tools"; \
+		go run $(MAIN_PATH); \
+	fi'
+```
+
+**修复内容**：
+
+1. **使用 bash -c**：确保使用标准的 bash 语法
+2. **简化条件判断**：使用 `command -v` 检测命令是否存在
+3. **统一错误处理**：如果 air 未安装，自动回退到 `go run`
+
+**如果仍有问题，请提供具体错误信息**，我可以进一步诊断。常见问题：
+
+1. **Air 未安装**：
+   ```bash
+   make install-tools
+   # 或
+   go install github.com/air-verse/air@latest
+   ```
+
+2. **PATH 问题**：
+   ```bash
+   # 检查 air 是否在 PATH 中
+   which air
+   # 或
+   command -v air
+   
+   # 如果不在，添加到 PATH
+   export PATH=$PATH:$(go env GOPATH)/bin
+   ```
+
+3. **Air 配置问题**：
+   ```bash
+   # 检查 air.toml 配置
+   cat air.toml
+   
+   # 清理临时文件
+   rm -rf tmp/
+   ```
+
+4. **直接测试 Air**：
+   ```bash
+   # 直接运行 air，看是否有错误
+   air
+   ```
+
+**诊断步骤**：
+
+如果问题仍然存在，请运行以下命令并提供输出：
+
+```bash
+# 1. 检查环境
+make check-env
+
+# 2. 检查 Air 是否安装
+which air || command -v air || echo "Air 未找到"
+
+# 3. 检查 Go 环境
+go env GOPATH
+go version
+
+# 4. 直接测试 Air
+air -v
+
+# 5. 尝试直接运行
+go run cmd/server/main.go
+```
+
+现在 `make dev` 应该可以正常工作了。如果还有问题，请提供具体的错误信息，我会继续帮您解决。
 
 ---

@@ -41,14 +41,14 @@ run: build
 # 开发模式（使用 air 热重载，如果安装了的话）
 dev:
 	@echo "💻 启动开发模式..."
-	@if $(CHECK_CMD) air > /dev/null 2>&1; then \
+	@bash -c 'if command -v air > /dev/null 2>&1; then \
 		echo "✅ 使用 Air 热重载..."; \
 		air; \
 	else \
 		echo "⚠️  Air 未安装，使用普通模式运行..."; \
 		echo "💡 安装 Air: make install-tools"; \
 		go run $(MAIN_PATH); \
-	fi
+	fi'
 
 # 运行测试
 test:

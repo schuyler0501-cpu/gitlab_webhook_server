@@ -31,13 +31,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("初始化日志失败: %v", err)
 	}
-	defer zapLogger.Sync()
+	defer func(zapLogger *zap.Logger) {
+		err := zapLogger.Sync()
+		if err != nil {
+
+		}
+	}(zapLogger)
 
 	// 初始化数据库
 	if err := database.Init(cfg, zapLogger); err != nil {
 		zapLogger.Fatal("数据库初始化失败", zap.Error(err))
 	}
-	defer database.Close()
+	defer func() {
+		err := database.Close()
+		if err != nil {
+
+		}
+	}()
 
 	// 执行数据库迁移
 	if err := database.Migrate(); err != nil {
@@ -107,4 +117,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-

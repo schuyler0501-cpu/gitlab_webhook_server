@@ -76,7 +76,7 @@ func Load() (*Config, error) {
 			QueueSize: getEnvInt("WORKER_POOL_QUEUE_SIZE", 100),
 		},
 		RateLimit: RateLimitConfig{
-			Limit:  getEnvInt("RATE_LIMIT_LIMIT", 100),
+			Limit:  getEnvInt("RATE_LIMIT", 100), // 修复：统一使用 RATE_LIMIT
 			Window: getEnv("RATE_LIMIT_WINDOW", "1m"),
 		},
 		GitLab: GitLabConfig{

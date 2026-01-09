@@ -17,13 +17,17 @@ import (
 type WebhookHandler struct {
 	logger         *zap.Logger
 	webhookService *service.WebhookService
+	webhookSecret  string // Webhook 密钥（用于 token 验证）
 }
 
 // NewWebhookHandler 创建新的 Webhook 处理器
-func NewWebhookHandler(db *gorm.DB, workerPool *queue.WorkerPool, logger *zap.Logger) *WebhookHandler {
+func NewWebhookHandler(db *gorm.DB, workerPool *queue.WorkerPool, webhookSecret string, logger *zap.Logger) *WebhookHandler {
+	webhookService := service.NewWebhookService(db, workerPool, logger)
+	webhookService.SetWebhookSecret(webhookSecret)
 	return &WebhookHandler{
 		logger:         logger,
-		webhookService: service.NewWebhookService(db, workerPool, logger),
+		webhookService: webhookService,
+		webhookSecret:  webhookSecret,
 	}
 }
 
@@ -52,6 +56,30 @@ func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
 	case "github":
 		// GitHub 使用 X-Hub-Signature-256 进行签名验证
 		token = c.GetHeader("X-Hub-Signature-256")
+	}
+
+	// 验证 token（如果配置了 webhook secret）
+	if h.webhookSecret != "" {
+		if token == "" {
+			h.logger.Warn("Webhook token 缺失",
+				zap.String("platform", platformName),
+				zap.String("ip", c.ClientIP()),
+			)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Webhook token is required"})
+			return
+		}
+		// TODO: 实现完整的 token 验证逻辑
+		// GitLab/Gitee: 直接比较 token
+		// GitHub: 需要 HMAC SHA256 签名验证
+		if platformName != "github" && token != h.webhookSecret {
+			h.logger.Warn("Webhook token 验证失败",
+				zap.String("platform", platformName),
+				zap.String("ip", c.ClientIP()),
+			)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid webhook token"})
+			return
+		}
+		// GitHub 签名验证需要读取请求体，这里先跳过，后续实现
 	}
 
 	// 解析请求体

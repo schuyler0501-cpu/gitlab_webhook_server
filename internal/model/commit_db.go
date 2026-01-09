@@ -105,9 +105,15 @@ func (CommitLanguage) TableName() string {
 
 // BeforeCreate 创建前钩子
 func (c *Commit) BeforeCreate(tx *gorm.DB) error {
-	// 确保 CommitID 唯一
+	// 确保 (commit_id, project_id) 组合唯一
 	var count int64
-	tx.Model(&Commit{}).Where("commit_id = ?", c.CommitID).Count(&count)
+	query := tx.Model(&Commit{}).Where("commit_id = ?", c.CommitID)
+	if c.ProjectID != nil {
+		query = query.Where("project_id = ?", *c.ProjectID)
+	} else {
+		query = query.Where("project_id IS NULL")
+	}
+	query.Count(&count)
 	if count > 0 {
 		return gorm.ErrDuplicatedKey
 	}

@@ -16,6 +16,7 @@ type WebhookService struct {
 	commitService *commit.CommitServiceV2
 	db            *gorm.DB
 	workerPool    *queue.WorkerPool
+	webhookSecret string // Webhook 密钥（用于 token 验证）
 }
 
 // NewWebhookService 创建新的 Webhook 服务
@@ -25,7 +26,18 @@ func NewWebhookService(db *gorm.DB, workerPool *queue.WorkerPool, logger *zap.Lo
 		commitService: commit.NewCommitServiceV2(db, logger),
 		db:            db,
 		workerPool:    workerPool,
+		webhookSecret: "", // 从配置中获取，需要在 handler 中设置
 	}
+}
+
+// SetWebhookSecret 设置 webhook 密钥
+func (s *WebhookService) SetWebhookSecret(secret string) {
+	s.webhookSecret = secret
+}
+
+// GetWebhookSecret 获取 webhook 密钥
+func (s *WebhookService) GetWebhookSecret() string {
+	return s.webhookSecret
 }
 
 // ProcessWebhook 处理 webhook 事件

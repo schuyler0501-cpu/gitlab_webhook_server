@@ -19,8 +19,8 @@
 
 ## 📊 对话统计
 
-- **总对话数**: 9
-- **最后更新**: 2025-12-25 21:19:11
+- **总对话数**: 11
+- **最后更新**: 2026-01-07 15:28:34
 
 ---
 
@@ -716,5 +716,200 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 - ✅ 代码结构清晰，易于扩展
 
 项目现在支持 GitLab、Gitee、GitHub 三个平台的 webhook，可以开始使用 Gitee 或 GitHub 进行测试。
+
+---
+
+## 对话记录 - 2026-01-07 13:27:54
+
+### 用户
+[有效对话] 帮我全方位的分析代码的实现，检查是否有实现缺失、功能遗漏，确保我自测顺利
+
+### AI 回复
+已完成代码实现的全方位分析，并修复了发现的关键问题：
+
+**分析结果**：
+
+1. **代码质量检查** ✅
+   - 架构清晰，分层合理
+   - 错误处理完善
+   - 日志记录完整
+   - 资源管理正确
+   - 并发安全
+
+2. **功能完整性检查** ✅
+   - 核心功能完整
+   - 多平台 webhook 支持
+   - 数据库持久化
+   - 统计 API
+   - 历史数据导入
+
+**发现并修复的问题**：
+
+1. **配置不一致** ✅ 已修复
+   - 问题：`env.example` 使用 `RATE_LIMIT`，但 `config.go` 使用 `RATE_LIMIT_LIMIT`
+   - 修复：统一使用 `RATE_LIMIT` 环境变量
+
+2. **BeforeCreate 唯一性检查不完整** ✅ 已修复
+   - 问题：只检查了 `commit_id`，没有检查 `(commit_id, project_id)` 组合
+   - 修复：更新钩子逻辑，正确检查组合唯一性
+
+3. **Webhook Token 验证缺失** ✅ 已修复
+   - 问题：获取了 token 但没有验证
+   - 修复：添加了 token 验证逻辑（GitLab/Gitee 直接比较，GitHub 待实现签名验证）
+
+**生成的文档**：
+
+- `docs/code_review_report.md` - 完整的代码审查报告
+  - 功能检查清单
+  - 问题分析和优先级
+  - 自测建议和测试用例
+  - 修复建议和改进方向
+
+**修复的文件**：
+
+1. `internal/config/config.go` - 修复环境变量名称不一致
+2. `internal/model/commit_db.go` - 修复唯一性检查逻辑
+3. `internal/handler/webhook_handler.go` - 添加 token 验证
+4. `internal/service/webhook_service.go` - 添加 webhook secret 支持
+5. `cmd/server/main.go` - 传递 webhook secret 到 handler
+
+**自测建议**：
+
+1. **基础功能测试**：
+   ```bash
+   # 健康检查
+   curl http://localhost:3000/health
+   
+   # Webhook 测试端点
+   curl http://localhost:3000/webhook/test
+   ```
+
+2. **Webhook 测试**：
+   - GitLab: `POST /webhook` with `X-Gitlab-Event: Push Hook`
+   - Gitee: `POST /webhook` with `X-Gitee-Event: Push Hook`
+   - GitHub: `POST /webhook` with `X-GitHub-Event: push`
+
+3. **统计 API 测试**：
+   - `GET /api/stats/member?email=user@example.com`
+   - `GET /api/stats/languages?email=user@example.com`
+   - `GET /api/stats/commits?email=user@example.com`
+
+**待完善功能**（低优先级）：
+
+1. GitHub 签名验证（HMAC SHA256）- 需要读取请求体进行验证
+2. 导入状态查询 - 当前是占位符实现
+3. 单元测试 - 建议添加测试覆盖
+
+**项目状态**：
+
+- ✅ 核心功能完整
+- ✅ 关键问题已修复
+- ✅ 代码质量良好
+- ✅ 可以开始自测
+
+详细的分析报告已保存到 `docs/code_review_report.md`，包含完整的功能检查清单、问题分析、自测建议和修复优先级。
+
+---
+
+## 对话记录 - 2026-01-07 15:28:34
+
+### 用户
+[有效对话] 帮我准备一个自测指南，我来测试代码的实现是否已经满足了我的需要
+
+### AI 回复
+已创建完整的自测指南文档，帮助您系统性地测试代码实现：
+
+**创建的文档**：
+
+- `docs/SELF_TEST_GUIDE.md` - 完整的自测指南
+  - 测试前准备和环境配置
+  - 基础功能测试步骤
+  - Webhook 功能测试（GitLab、Gitee、GitHub）
+  - 统计 API 测试
+  - 历史数据导入测试
+  - 数据库验证
+  - 性能测试
+  - 问题排查指南
+  - 测试检查清单
+
+**自测指南内容**：
+
+1. **测试前准备**：
+   - 环境要求检查
+   - 项目准备步骤
+   - 环境变量配置说明
+
+2. **基础功能测试**：
+   - 健康检查端点
+   - Webhook 测试端点
+   - 限流功能测试
+
+3. **Webhook 功能测试**：
+   - GitLab webhook 测试（包含测试数据示例）
+   - Gitee webhook 测试（包含测试数据示例）
+   - GitHub webhook 测试（包含测试数据示例）
+   - Token 验证测试
+
+4. **统计 API 测试**：
+   - 成员统计 API
+   - 语言统计 API
+   - 提交记录查询 API
+   - 错误情况测试
+
+5. **历史数据导入测试**：
+   - 导入项目提交记录
+   - 查询导入状态
+
+6. **数据库验证**：
+   - 提交记录存储验证
+   - 文件变更记录验证
+   - 语言统计验证
+
+7. **性能测试**：
+   - 并发 Webhook 处理
+   - 限流功能验证
+
+8. **问题排查**：
+   - 常见问题及解决方案
+   - 日志查看方法
+   - 关键日志信息说明
+
+9. **测试检查清单**：
+   - 基础功能检查项
+   - Webhook 功能检查项
+   - 数据存储检查项
+   - 统计 API 检查项
+   - 性能检查项
+
+**测试数据示例**：
+
+指南中包含了三个平台的 webhook 测试数据示例：
+- `test_payloads/gitlab_push.json`
+- `test_payloads/gitee_push.json`
+- `test_payloads/github_push.json`
+
+您可以直接使用这些示例进行测试。
+
+**测试完成标准**：
+
+- **必须通过**：
+  1. 服务正常启动
+  2. 至少一个平台的 webhook 可以正常接收和处理
+  3. 数据正确保存到数据库
+  4. 统计 API 可以正常查询数据
+
+- **建议通过**：
+  1. 所有三个平台的 webhook 都可以正常工作
+  2. Token 验证功能正常
+  3. 历史数据导入功能正常（如果配置了 GitLab API）
+
+**使用建议**：
+
+1. 按照指南顺序逐步测试
+2. 每个测试用例都有明确的预期结果
+3. 使用检查清单确保所有功能都已测试
+4. 遇到问题时参考问题排查章节
+
+自测指南已保存到 `docs/SELF_TEST_GUIDE.md`，您可以直接按照指南进行测试。
 
 ---

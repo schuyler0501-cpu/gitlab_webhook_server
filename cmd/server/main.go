@@ -90,7 +90,7 @@ func main() {
 	}
 
 	// 注册路由
-	webhookHandler := handler.NewWebhookHandler(database.DB, workerPool, zapLogger)
+	webhookHandler := handler.NewWebhookHandler(database.DB, workerPool, cfg.WebhookSecret, zapLogger)
 	statsHandler := handler.NewStatsHandler(database.DB, zapLogger)
 	router.RegisterRoutes(r, webhookHandler, statsHandler, importHandler)
 

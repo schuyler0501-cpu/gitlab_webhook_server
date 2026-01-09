@@ -6,19 +6,22 @@ import (
 	"go.uber.org/zap"
 )
 
-// CommitService 提交服务
+// CommitService 提交服务（旧版本，已废弃）
+// 注意：此服务已被 CommitServiceV2 替代，保留仅用于向后兼容
+// 新代码请使用 CommitServiceV2，它包含完整的数据库持久化功能
 type CommitService struct {
 	logger *zap.Logger
 }
 
-// NewCommitService 创建新的提交服务
+// NewCommitService 创建新的提交服务（已废弃，请使用 NewCommitServiceV2）
 func NewCommitService(logger *zap.Logger) *CommitService {
 	return &CommitService{
 		logger: logger,
 	}
 }
 
-// RecordCommit 记录代码提交
+// RecordCommit 记录代码提交（已废弃，请使用 CommitServiceV2.RecordCommit）
+// 此方法仅记录日志，不进行数据持久化
 func (s *CommitService) RecordCommit(commit *model.CommitRecord) error {
 	s.logger.Info("📝 记录代码提交",
 		zap.String("commit_id", commit.CommitID),
@@ -27,11 +30,9 @@ func (s *CommitService) RecordCommit(commit *model.CommitRecord) error {
 		zap.String("message", truncateString(commit.Message, 50)),
 	)
 
-	// TODO: 实现数据持久化逻辑
-	// 这里可以：
-	// 1. 保存到数据库（PostgreSQL, MySQL 等）
-	// 2. 发送到消息队列（RabbitMQ, Kafka 等）
-	// 3. 调用其他服务 API
+	// 注意：此方法不进行数据持久化
+	// 数据持久化功能已在 CommitServiceV2 中实现
+	// 请使用 CommitServiceV2.RecordCommit 方法
 
 	// 计算并记录统计信息
 	stats := s.calculateCommitStats(commit)
@@ -45,13 +46,16 @@ func (s *CommitService) RecordCommit(commit *model.CommitRecord) error {
 	return nil
 }
 
-// GetMemberCommits 获取成员的提交记录（用于统计）
+// GetMemberCommits 获取成员的提交记录（已废弃，请使用 CommitServiceV2.GetMemberCommits）
+// 此方法返回空列表，实际查询功能已在 CommitServiceV2 中实现
 func (s *CommitService) GetMemberCommits(
 	authorEmail string,
 	startDate, endDate *string,
 ) ([]*model.CommitRecord, error) {
 	s.logger.Info("查询成员提交记录", zap.String("author_email", authorEmail))
-	// TODO: 实现查询逻辑
+	// 注意：此方法不进行实际查询
+	// 查询功能已在 CommitServiceV2 中实现
+	// 请使用 CommitServiceV2.GetMemberCommits 方法
 	return []*model.CommitRecord{}, nil
 }
 

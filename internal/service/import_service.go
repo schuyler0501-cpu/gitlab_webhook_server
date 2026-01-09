@@ -219,3 +219,48 @@ type ImportResult struct {
 	Duration  time.Duration
 }
 
+// GetImportStatus 获取导入状态
+// 通过查询数据库中的提交记录来判断导入状态
+func (s *ImportService) GetImportStatus(projectID string) (*ImportStatus, error) {
+	status := &ImportStatus{
+		ProjectID: projectID,
+		Status:    "unknown",
+	}
+
+	// 查询数据库中该项目的提交记录数量
+	var count int64
+	query := s.db.Model(&model.Commit{}).Where("project_id = ?", projectID)
+	if err := query.Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("查询提交记录数量失败: %w", err)
+	}
+
+	status.TotalCommits = int(count)
+
+	// 查询最近导入的记录时间
+	var lastCommit model.Commit
+	if err := query.Order("created_at DESC").First(&lastCommit).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 没有记录，说明未导入
+			status.Status = "not_started"
+			status.Message = "该项目尚未导入任何提交记录"
+			return status, nil
+		}
+		return nil, fmt.Errorf("查询最近提交记录失败: %w", err)
+	}
+
+	// 有记录，说明已导入
+	status.Status = "completed"
+	status.LastImportedAt = &lastCommit.CreatedAt
+	status.Message = fmt.Sprintf("已导入 %d 条提交记录，最后导入时间: %s", count, lastCommit.CreatedAt.Format(time.RFC3339))
+
+	return status, nil
+}
+
+// ImportStatus 导入状态
+type ImportStatus struct {
+	ProjectID      string     `json:"project_id"`
+	Status         string     `json:"status"` // not_started, processing, completed, failed
+	TotalCommits   int        `json:"total_commits"`
+	LastImportedAt *time.Time `json:"last_imported_at,omitempty"`
+	Message        string     `json:"message"`
+}

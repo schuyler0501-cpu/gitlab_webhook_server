@@ -96,7 +96,8 @@ func (h *ImportHandler) ImportProject(c *gin.Context) {
 	})
 }
 
-// GetImportStatus 获取导入状态（简化版，实际可以维护导入任务状态）
+// GetImportStatus 获取导入状态
+// 通过查询数据库中的提交记录来判断导入状态
 // GET /api/import/status?project_id=123
 func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 	projectID := c.Query("project_id")
@@ -105,13 +106,17 @@ func (h *ImportHandler) GetImportStatus(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现导入状态查询
-	// 可以维护一个导入任务状态表，或者通过查询数据库中的提交记录来判断
+	// 查询导入状态
+	status, err := h.importService.GetImportStatus(projectID)
+	if err != nil {
+		h.logger.Error("查询导入状态失败",
+			zap.String("project_id", projectID),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get import status"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"project_id": projectID,
-		"status":     "completed", // 简化实现
-		"message":    "查询导入状态功能待实现",
-	})
+	c.JSON(http.StatusOK, status)
 }
 

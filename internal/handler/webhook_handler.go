@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"net/http"
 	"strings"
 
@@ -46,6 +50,18 @@ func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
 	platformName := platform.GetPlatformName()
 	eventType := platform.GetEventType(headers)
 
+	// 读取请求体（GitHub 需要先读取以验证签名）
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		h.logger.Error("读取请求体失败",
+			zap.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
+		return
+	}
+	// 恢复请求体供后续解析使用
+	c.Request.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+
 	// 获取 token（不同平台使用不同的 header）
 	var token string
 	switch platformName {
@@ -60,26 +76,44 @@ func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
 
 	// 验证 token（如果配置了 webhook secret）
 	if h.webhookSecret != "" {
-		if token == "" {
-			h.logger.Warn("Webhook token 缺失",
-				zap.String("platform", platformName),
-				zap.String("ip", c.ClientIP()),
-			)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Webhook token is required"})
-			return
+		if platformName == "github" {
+			// GitHub 使用 HMAC SHA256 签名验证
+			signature := c.GetHeader("X-Hub-Signature-256")
+			if signature == "" {
+				h.logger.Warn("GitHub webhook 签名缺失",
+					zap.String("ip", c.ClientIP()),
+				)
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "GitHub webhook signature is required"})
+				return
+			}
+
+			// 验证签名
+			if !h.verifyGitHubSignature(bodyBytes, signature) {
+				h.logger.Warn("GitHub webhook 签名验证失败",
+					zap.String("ip", c.ClientIP()),
+				)
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid GitHub webhook signature"})
+				return
+			}
+		} else {
+			// GitLab/Gitee: 直接比较 token
+			if token == "" {
+				h.logger.Warn("Webhook token 缺失",
+					zap.String("platform", platformName),
+					zap.String("ip", c.ClientIP()),
+				)
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Webhook token is required"})
+				return
+			}
+			if token != h.webhookSecret {
+				h.logger.Warn("Webhook token 验证失败",
+					zap.String("platform", platformName),
+					zap.String("ip", c.ClientIP()),
+				)
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid webhook token"})
+				return
+			}
 		}
-		// TODO: 实现完整的 token 验证逻辑
-		// GitLab/Gitee: 直接比较 token
-		// GitHub: 需要 HMAC SHA256 签名验证
-		if platformName != "github" && token != h.webhookSecret {
-			h.logger.Warn("Webhook token 验证失败",
-				zap.String("platform", platformName),
-				zap.String("ip", c.ClientIP()),
-			)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid webhook token"})
-			return
-		}
-		// GitHub 签名验证需要读取请求体，这里先跳过，后续实现
 	}
 
 	// 解析请求体
@@ -117,6 +151,24 @@ func (h *WebhookHandler) HandleWebhook(c *gin.Context) {
 		"platform": platformName,
 		"event":    eventType,
 	})
+}
+
+// verifyGitHubSignature 验证 GitHub webhook 签名
+// GitHub 使用 HMAC SHA256 算法，签名格式为 "sha256=<hex_string>"
+func (h *WebhookHandler) verifyGitHubSignature(payload []byte, signature string) bool {
+	// 移除 "sha256=" 前缀
+	signature = strings.TrimPrefix(signature, "sha256=")
+	if signature == "" {
+		return false
+	}
+
+	// 计算 HMAC SHA256
+	mac := hmac.New(sha256.New, []byte(h.webhookSecret))
+	mac.Write(payload)
+	expectedSignature := hex.EncodeToString(mac.Sum(nil))
+
+	// 使用 hmac.Equal 进行常量时间比较，防止时序攻击
+	return hmac.Equal([]byte(signature), []byte(expectedSignature))
 }
 
 // Test Webhook 测试端点

@@ -15,12 +15,23 @@ type Platform interface {
 	// 返回提交记录列表和错误
 	ParsePushEvent(payload map[string]interface{}) ([]*model.CommitRecord, error)
 
+	// ParseTagPushEvent 解析 Tag Push 事件
+	// Tag Push 事件与 Push 事件结构类似，但 ref 是 "refs/tags/" 开头
+	// 返回提交记录列表和错误
+	ParseTagPushEvent(payload map[string]interface{}) ([]*model.CommitRecord, error)
+
 	// GetEventType 获取事件类型
 	// 从请求头中提取事件类型
 	GetEventType(headers map[string]string) string
 
 	// GetPlatformName 获取平台名称
 	GetPlatformName() string
+
+	// VerifySecret 验证 webhook 密钥
+	// headers: 请求头
+	// payload: 请求体原始字节
+	// secret: webhook 密钥
+	VerifySecret(headers map[string]string, payload []byte, secret string) error
 }
 
 // PlatformType 平台类型

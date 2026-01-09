@@ -113,11 +113,55 @@ func (s *WebhookService) handlePushEvent(platform webhook.Platform, payload map[
 }
 
 // handleTagPushEvent 处理 Tag Push 事件
+// Tag Push 事件与 Push 事件结构类似，但 ref 是 "refs/tags/" 开头
 func (s *WebhookService) handleTagPushEvent(platform webhook.Platform, payload map[string]interface{}) error {
 	s.logger.Info("处理 Tag Push 事件",
 		zap.String("platform", platform.GetPlatformName()),
 	)
-	// TODO: 实现 Tag Push 事件处理逻辑
+
+	// Tag Push 事件通常包含一个提交（创建或删除标签的提交）
+	// 使用平台解析器解析提交记录（Tag Push 和 Push 事件结构类似）
+	commitRecords, err := platform.ParseTagPushEvent(payload)
+	if err != nil {
+		s.logger.Error("解析 Tag Push 事件失败",
+			zap.String("platform", platform.GetPlatformName()),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	if len(commitRecords) == 0 {
+		s.logger.Info("Tag Push 事件中没有提交记录",
+			zap.String("platform", platform.GetPlatformName()),
+		)
+		return nil
+	}
+
+	// 异步处理提交记录（与 Push 事件相同的处理逻辑）
+	if len(commitRecords) == 1 {
+		// 单个提交，使用单任务
+		task := queue.NewWebhookTask(commitRecords[0], s.commitService, s.logger)
+		if err := s.workerPool.Submit(task); err != nil {
+			s.logger.Error("提交任务失败", zap.Error(err))
+			// 如果队列满，降级为同步处理
+			if err := s.commitService.RecordCommit(commitRecords[0]); err != nil {
+				s.logger.Error("记录提交失败", zap.Error(err))
+			}
+		}
+	} else {
+		// 批量提交，使用批量任务
+		task := queue.NewBatchWebhookTask(commitRecords, s.commitService, s.db, s.logger)
+		if err := s.workerPool.Submit(task); err != nil {
+			s.logger.Error("提交批量任务失败", zap.Error(err))
+			// 如果队列满，降级为同步处理
+			for _, commitRecord := range commitRecords {
+				if err := s.commitService.RecordCommit(commitRecord); err != nil {
+					s.logger.Error("记录提交失败", zap.Error(err))
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

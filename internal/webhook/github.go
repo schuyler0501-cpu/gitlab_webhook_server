@@ -344,3 +344,15 @@ func (p *GitHubPlatform) parseStringSlice(data interface{}) []string {
 	return result
 }
 
+// ParseTagPushEvent 解析 GitHub Tag Push 事件
+// Tag Push 事件与 Push 事件结构相同，只是 ref 是 "refs/tags/" 开头
+func (p *GitHubPlatform) ParseTagPushEvent(payload map[string]interface{}) ([]*model.CommitRecord, error) {
+	// Tag Push 事件结构与 Push 事件相同，可以直接复用 ParsePushEvent
+	return p.ParsePushEvent(payload)
+}
+
+// VerifySecret 验证 GitHub webhook 密钥
+func (p *GitHubPlatform) VerifySecret(headers map[string]string, payload []byte, secret string) error {
+	// GitHub 使用 HMAC SHA256 签名验证，在 handler 中已处理
+	return nil
+}

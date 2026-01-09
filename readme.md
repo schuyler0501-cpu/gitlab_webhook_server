@@ -228,7 +228,7 @@ AI: 会自动在正确的目录创建文件，遵循命名规范，
 - **Air**: 热重载工具
 
   ```bash
-  go install github.com/cosmtrek/air@latest
+  go install github.com/air-verse/air@latest
   ```
 
 - **golangci-lint**: 代码检查工具

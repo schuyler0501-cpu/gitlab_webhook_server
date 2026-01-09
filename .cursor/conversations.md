@@ -19,8 +19,8 @@
 
 ## 📊 对话统计
 
-- **总对话数**: 11
-- **最后更新**: 2026-01-07 15:28:34
+- **总对话数**: 12
+- **最后更新**: 2026-01-09 20:12:39
 
 ---
 
@@ -911,5 +911,43 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 4. 遇到问题时参考问题排查章节
 
 自测指南已保存到 `docs/SELF_TEST_GUIDE.md`，您可以直接按照指南进行测试。
+
+---
+
+## 对话记录 - 2026-01-09 20:12:39
+
+### 用户
+[有效对话] go install github.com/cosmtrek/air@latest
+go: downloading github.com/cosmtrek/air v1.63.6
+go: github.com/cosmtrek/air@latest: version constraints conflict:
+        github.com/cosmtrek/air@v1.63.6: parsing go.mod:
+        module declares its path as: github.com/air-verse/air
+                but was required as: github.com/cosmtrek/air 解决问题下
+
+### AI 回复
+问题已解决！这是因为 air 项目已经迁移到了新的仓库路径。
+
+**问题原因**：
+- air 项目已从 `github.com/cosmtrek/air` 迁移到 `github.com/air-verse/air`
+- 旧路径与新路径冲突，导致安装失败
+
+**解决方案**：
+使用新的路径安装：
+```bash
+go install github.com/air-verse/air@latest
+```
+
+**已完成的修复**：
+1. ✅ 使用新路径成功安装 air
+2. ✅ 更新了所有文档中的安装命令：
+   - `readme.md` - 推荐工具部分
+   - `air.toml` - 配置文件注释
+   - `docs/DEVELOPMENT.md` - 推荐工具部分
+   - `QUICKSTART.md` - 安装说明（2 处）
+
+**验证安装**：
+运行 `air -v` 可以验证 air 是否已正确安装。
+
+现在您可以使用 `make dev` 启动开发服务器，air 会自动监控文件变化并热重载。
 
 ---

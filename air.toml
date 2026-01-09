@@ -1,5 +1,5 @@
 # Air 配置文件 - 用于开发时的热重载
-# 安装: go install github.com/cosmtrek/air@latest
+# 安装: go install github.com/air-verse/air@latest
 
 root = "."
 testdata_dir = "testdata"

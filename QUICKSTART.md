@@ -48,7 +48,7 @@ GITLAB_WEBHOOK_SECRET=your_secret_token_here
 
 首先安装 Air:
 ```bash
-go install github.com/cosmtrek/air@latest
+go install github.com/air-verse/air@latest
 ```
 
 然后运行:
@@ -139,7 +139,7 @@ make help
 
 ### Air（热重载）
 ```bash
-go install github.com/cosmtrek/air@latest
+go install github.com/air-verse/air@latest
 ```
 
 ### golangci-lint（代码检查）

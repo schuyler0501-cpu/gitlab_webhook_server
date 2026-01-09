@@ -181,6 +181,6 @@ Closes #123
 
 ## 🛠️ 推荐工具
 
-- **Air**: 热重载工具，`go install github.com/cosmtrek/air@latest`
+- **Air**: 热重载工具，`go install github.com/air-verse/air@latest`
 - **golangci-lint**: 代码检查工具，`go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - **goimports**: 自动导入管理，`go install golang.org/x/tools/cmd/goimports@latest`
